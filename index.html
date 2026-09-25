@@ -2,90 +2,132 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>3D Shape Reference</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #0e0e10; color: #e8e6e0; font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
 
-  #top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 18px; border-bottom: 1px solid #2a2a2e; background: #111114; flex-shrink: 0; }
-  #top-bar h1 { font-size: 13px; font-weight: 500; letter-spacing: 0.05em; color: #888; }
+  #top-bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #2a2a2e; background: #111114; flex-shrink: 0; gap: 8px; }
 
-  #controls { display: flex; gap: 8px; align-items: center; }
-  .btn { background: #1e1e22; border: 1px solid #333; color: #ccc; padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+  #menu-btn { background: #1e1e22; border: 1px solid #333; color: #ccc; width: 34px; height: 34px; border-radius: 6px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }
+  #menu-btn:hover { background: #2a2a30; }
+
+  #top-bar h1 { font-size: 13px; font-weight: 500; letter-spacing: 0.05em; color: #888; flex-shrink: 0; }
+
+  #controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .btn { background: #1e1e22; border: 1px solid #333; color: #ccc; padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
   .btn:hover { background: #2a2a30; color: #fff; }
   .btn.active { background: #f0e8d0; color: #1a1a1a; border-color: #f0e8d0; }
 
-  #main { display: flex; flex: 1; overflow: hidden; }
+  #main { display: flex; flex: 1; overflow: hidden; position: relative; }
 
-  #sidebar { width: 170px; background: #111114; border-right: 1px solid #2a2a2e; padding: 12px 8px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex-shrink: 0; }
+  /* Sidebar — slides in/out on mobile */
+  #sidebar {
+    width: 160px;
+    background: #111114;
+    border-right: 1px solid #2a2a2e;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    transition: transform 0.22s ease;
+    z-index: 10;
+  }
+  #sidebar.collapsed {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 20px #0008;
+  }
+  #sidebar.collapsed.open {
+    transform: translateX(0);
+  }
+
+  /* Overlay behind open sidebar on mobile */
+  #sidebar-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: #0007;
+    z-index: 9;
+  }
+  #sidebar-overlay.visible { display: block; }
+
   .group-label { font-size: 10px; letter-spacing: 0.1em; color: #555; text-transform: uppercase; padding: 8px 6px 4px; }
   .shape-btn { background: #1a1a1e; border: 1px solid #2a2a30; color: #b0aaa0; padding: 8px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; text-align: left; transition: all 0.15s; }
   .shape-btn:hover { background: #222228; color: #e0ddd8; border-color: #404048; }
   .shape-btn.active { background: #2a2820; border-color: #c8b888; color: #f0e8c8; }
 
-  #canvas-wrap { flex: 1; position: relative; }
+  #canvas-wrap { flex: 1; position: relative; min-width: 0; }
   canvas { display: block; width: 100%; height: 100%; }
 
-  #hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #444; pointer-events: none; white-space: nowrap; }
-  #info { position: absolute; top: 14px; right: 14px; font-size: 11px; color: #555; pointer-events: none; }
+  #hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #3a3a3a; pointer-events: none; white-space: nowrap; }
+  #info { position: absolute; top: 10px; right: 10px; font-size: 11px; color: #555; pointer-events: none; max-width: 180px; text-align: right; line-height: 1.5; }
 
   #xray-panel {
     display: none;
     position: absolute;
-    top: 12px;
-    left: 12px;
-    background: #111418cc;
+    top: 10px;
+    left: 10px;
+    background: #111418dd;
     border: 1px solid #2a3540;
     border-radius: 8px;
     padding: 8px 12px;
-    backdrop-filter: blur(6px);
-    min-width: 170px;
+    min-width: 160px;
     pointer-events: all;
+    z-index: 5;
   }
   #xray-panel.visible { display: block; }
   #xray-panel label { font-size: 10px; letter-spacing: 0.08em; color: #5599bb; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   #xray-panel label span { color: #88c8ff; font-size: 11px; letter-spacing: 0; }
-  #xray-panel input[type=range] {
-    width: 100%;
-    accent-color: #88c8ff;
-    cursor: pointer;
-  }
+  #xray-panel input[type=range] { width: 100%; accent-color: #88c8ff; cursor: pointer; }
   #xray-panel .density-labels { display: flex; justify-content: space-between; font-size: 10px; color: #446; margin-top: 3px; }
+
+  @media (max-width: 600px) {
+    .btn-label { display: none; }
+    .btn { padding: 5px 8px; font-size: 11px; }
+    #info { font-size: 10px; max-width: 130px; }
+  }
 </style>
 </head>
 <body>
 
 <div id="top-bar">
+  <button id="menu-btn" onclick="toggleSidebar()" aria-label="Toggle shapes menu">☰</button>
   <h1>Shape Reference</h1>
   <div id="controls">
     <button class="btn" id="btn-light" onclick="toggleLight()">Light: OFF</button>
     <button class="btn" id="btn-wire" onclick="toggleWire()">Edges: ON</button>
     <button class="btn" id="btn-xray" onclick="toggleXray()">X-Ray: OFF</button>
-    <button class="btn" onclick="resetView()">Reset view</button>
+    <button class="btn" onclick="resetView()">Reset</button>
   </div>
 </div>
 
 <div id="main">
+  <div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
   <div id="sidebar">
     <div class="group-label">Primitives</div>
-    <button class="shape-btn active" onclick="setShape('cube')">Cube</button>
-    <button class="shape-btn" onclick="setShape('sphere')">Sphere</button>
-    <button class="shape-btn" onclick="setShape('cylinder')">Cylinder</button>
-    <button class="shape-btn" onclick="setShape('cone')">Cone</button>
-    <button class="shape-btn" onclick="setShape('pyramid')">Pyramid</button>
-    <button class="shape-btn" onclick="setShape('torus')">Torus (Donut)</button>
+    <button class="shape-btn active" onclick="setShape('cube', this)">Cube</button>
+    <button class="shape-btn" onclick="setShape('sphere', this)">Sphere</button>
+    <button class="shape-btn" onclick="setShape('cylinder', this)">Cylinder</button>
+    <button class="shape-btn" onclick="setShape('cone', this)">Cone</button>
+    <button class="shape-btn" onclick="setShape('pyramid', this)">Pyramid</button>
+    <button class="shape-btn" onclick="setShape('torus', this)">Torus (Donut)</button>
 
     <div class="group-label">Combinations</div>
-    <button class="shape-btn" onclick="setShape('cyl_on_box')">Cylinder on Box</button>
-    <button class="shape-btn" onclick="setShape('sphere_on_cyl')">Sphere on Cylinder</button>
-    <button class="shape-btn" onclick="setShape('cone_on_cyl')">Cone on Cylinder</button>
+    <button class="shape-btn" onclick="setShape('cyl_on_box', this)">Cylinder on Box</button>
+    <button class="shape-btn" onclick="setShape('sphere_on_cyl', this)">Sphere on Cylinder</button>
+    <button class="shape-btn" onclick="setShape('cone_on_cyl', this)">Cone on Cylinder</button>
 
     <div class="group-label">Body Forms</div>
-    <button class="shape-btn" onclick="setShape('head')">Head form</button>
-    <button class="shape-btn" onclick="setShape('torso')">Torso box</button>
-    <button class="shape-btn" onclick="setShape('arm')">Arm cylinder</button>
-    <button class="shape-btn" onclick="setShape('fist')">Fist block</button>
+    <button class="shape-btn" onclick="setShape('head', this)">Head form</button>
+    <button class="shape-btn" onclick="setShape('torso', this)">Torso box</button>
+    <button class="shape-btn" onclick="setShape('arm', this)">Arm cylinder</button>
+    <button class="shape-btn" onclick="setShape('fist', this)">Fist block</button>
   </div>
 
   <div id="canvas-wrap">
@@ -97,7 +139,7 @@
       <div class="density-labels"><span>sparse</span><span>dense</span></div>
     </div>
 
-    <div id="hint">Drag to rotate &nbsp;·&nbsp; Scroll to zoom</div>
+    <div id="hint">Drag · Pinch to zoom</div>
     <div id="info"></div>
   </div>
 </div>
@@ -106,9 +148,38 @@
 <script>
 const canvas = document.getElementById('c');
 const wrap = document.getElementById('canvas-wrap');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebar-overlay');
 
+// Detect mobile
+const isMobile = () => window.innerWidth <= 700;
+
+function applyLayout() {
+  if (isMobile()) {
+    sidebar.classList.add('collapsed');
+    sidebar.classList.remove('open');
+    overlay.classList.remove('visible');
+  } else {
+    sidebar.classList.remove('collapsed', 'open');
+    overlay.classList.remove('visible');
+  }
+}
+applyLayout();
+window.addEventListener('resize', applyLayout);
+
+function toggleSidebar() {
+  if (!sidebar.classList.contains('collapsed')) return;
+  const open = sidebar.classList.toggle('open');
+  overlay.classList.toggle('visible', open);
+}
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  overlay.classList.remove('visible');
+}
+
+// Three.js setup
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -143,32 +214,28 @@ let lightOn = false;
 let wireOn = true;
 let xrayOn = false;
 let xrayDensity = 5;
-let isDragging = false;
-let lastMouse = { x: 0, y: 0 };
 let rotX = 0.3, rotY = 0.5;
 let zoom = 7;
 
 const shapeInfo = {
-  cube: 'Cube — notice how each face is flat. Great for practicing foreshortening.',
+  cube: 'Cube — each face is flat. Great for foreshortening practice.',
   sphere: 'Sphere — pure round form. Study the silhouette edge.',
   cylinder: 'Cylinder — round top/bottom, flat sides. Key form for limbs.',
-  cone: 'Cone — tapers to a point. Used in hair, horns, hats.',
+  cone: 'Cone — tapers to a point. Hair, horns, hats.',
   pyramid: 'Pyramid — triangular faces meeting at apex.',
   torus: 'Torus — great for studying wrapped curves.',
   cyl_on_box: 'Combination — cylinder sitting on a box.',
-  sphere_on_cyl: 'Combination — sphere on a cylinder (head on neck).',
+  sphere_on_cyl: 'Combination — sphere on cylinder (head on neck).',
   cone_on_cyl: 'Combination — cone on cylinder (hat on head).',
   head: 'Head form — sphere + flattened jaw block.',
   torso: 'Torso — simplified ribcage box form.',
-  arm: 'Arm — tapered cylinder. Note how it narrows toward the wrist.',
+  arm: 'Arm — tapered cylinder. Narrows toward the wrist.',
   fist: 'Fist block — boxy form. Fingers make a rectangular mass.',
 };
 
-// density 1-10 → segment counts
 function segs(base) {
-  // maps density 1→low, 10→high
   const t = (xrayDensity - 1) / 9;
-  return Math.round(base * (0.25 + t * 0.75));
+  return Math.max(3, Math.round(base * (0.25 + t * 0.75)));
 }
 
 const MAT_LIGHT = new THREE.MeshStandardMaterial({ color: 0xf0e8d0, roughness: 0.55, metalness: 0.05 });
@@ -186,101 +253,52 @@ function makeXrayWire(geo) {
 function addMesh(geo, mat, x, y, z) {
   const mesh = new THREE.Mesh(geo, mat.clone());
   mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
+  mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.userData.isSolid = true;
   if (xrayOn) { mesh.material.transparent = true; mesh.material.opacity = 0.08; mesh.material.depthWrite = false; }
   currentGroup.add(mesh);
-
-  const wire = makeEdgeWire(geo);
-  wire.position.set(x, y, z);
-  wire.visible = wireOn && !xrayOn;
-  wire.userData.isWire = true;
-  currentGroup.add(wire);
-
-  const xwire = makeXrayWire(geo);
-  xwire.position.set(x, y, z);
-  xwire.visible = xrayOn;
-  xwire.userData.isXray = true;
-  currentGroup.add(xwire);
+  const wire = makeEdgeWire(geo); wire.position.set(x, y, z); wire.visible = wireOn && !xrayOn; wire.userData.isWire = true; currentGroup.add(wire);
+  const xwire = makeXrayWire(geo); xwire.position.set(x, y, z); xwire.visible = xrayOn; xwire.userData.isXray = true; currentGroup.add(xwire);
 }
 
 function addScaledMesh(geo, mat, sx, sy, sz, px, py, pz) {
   const mesh = new THREE.Mesh(geo, mat.clone());
-  mesh.scale.set(sx, sy, sz);
-  mesh.position.set(px, py, pz);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
+  mesh.scale.set(sx, sy, sz); mesh.position.set(px, py, pz);
+  mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.userData.isSolid = true;
   if (xrayOn) { mesh.material.transparent = true; mesh.material.opacity = 0.08; mesh.material.depthWrite = false; }
   currentGroup.add(mesh);
-
-  const wire = makeEdgeWire(geo);
-  wire.scale.set(sx, sy, sz);
-  wire.position.set(px, py, pz);
-  wire.visible = wireOn && !xrayOn;
-  wire.userData.isWire = true;
-  currentGroup.add(wire);
-
-  const xwire = makeXrayWire(geo);
-  xwire.scale.set(sx, sy, sz);
-  xwire.position.set(px, py, pz);
-  xwire.visible = xrayOn;
-  xwire.userData.isXray = true;
-  currentGroup.add(xwire);
+  const wire = makeEdgeWire(geo); wire.scale.set(sx, sy, sz); wire.position.set(px, py, pz); wire.visible = wireOn && !xrayOn; wire.userData.isWire = true; currentGroup.add(wire);
+  const xwire = makeXrayWire(geo); xwire.scale.set(sx, sy, sz); xwire.position.set(px, py, pz); xwire.visible = xrayOn; xwire.userData.isXray = true; currentGroup.add(xwire);
 }
 
 function buildShape(name) {
   const mat = lightOn ? MAT_LIGHT : MAT_FLAT;
-  const s = segs(32); // base 32 segments, scales with density
-
-  if (name === 'cube') {
-    const d = segs(4); // box subdivisions 1–3
-    addMesh(new THREE.BoxGeometry(2, 2, 2, d, d, d), mat, 0, 0, 0);
-  } else if (name === 'sphere') {
-    addMesh(new THREE.SphereGeometry(1.2, s, Math.max(4, Math.round(s * 0.75))), mat, 0, 0, 0);
-  } else if (name === 'cylinder') {
-    addMesh(new THREE.CylinderGeometry(0.8, 0.8, 2.5, s, segs(4)), mat, 0, 0, 0);
-  } else if (name === 'cone') {
-    addMesh(new THREE.ConeGeometry(1, 2.5, s, segs(4)), mat, 0, 0, 0);
-  } else if (name === 'pyramid') {
-    addMesh(new THREE.ConeGeometry(1.2, 2.4, 4, segs(3)), mat, 0, 0, 0);
-  } else if (name === 'torus') {
-    addMesh(new THREE.TorusGeometry(1, 0.38, Math.max(4, segs(16)), s), mat, 0, 0, 0);
-  } else if (name === 'cyl_on_box') {
-    const d = segs(3);
-    addMesh(new THREE.BoxGeometry(1.8, 1.2, 1.8, d, d, d), mat, 0, -0.6, 0);
-    addMesh(new THREE.CylinderGeometry(0.6, 0.6, 1.4, s, segs(4)), mat, 0, 0.9, 0);
-  } else if (name === 'sphere_on_cyl') {
-    addMesh(new THREE.CylinderGeometry(0.5, 0.65, 1.6, s, segs(4)), mat, 0, -0.8, 0);
-    addMesh(new THREE.SphereGeometry(0.85, s, Math.max(4, Math.round(s * 0.75))), mat, 0, 0.85, 0);
-  } else if (name === 'cone_on_cyl') {
-    addMesh(new THREE.CylinderGeometry(0.7, 0.7, 1.5, s, segs(4)), mat, 0, -0.75, 0);
-    addMesh(new THREE.ConeGeometry(0.85, 1.4, s, segs(4)), mat, 0, 0.95, 0);
-  } else if (name === 'head') {
-    addScaledMesh(new THREE.SphereGeometry(1, s, Math.max(4, Math.round(s * 0.75))), mat, 1, 1.1, 0.92, 0, 0.4, 0);
-    const d = segs(2);
-    addMesh(new THREE.BoxGeometry(1.3, 0.7, 0.95, d, d, d), mat, 0, -0.72, 0.05);
-  } else if (name === 'torso') {
-    const d = segs(4);
-    addMesh(new THREE.BoxGeometry(2.0, 2.5, 1.1, d, d, d), mat, 0, 0, 0);
-  } else if (name === 'arm') {
-    addMesh(new THREE.CylinderGeometry(0.45, 0.6, 3.0, s, segs(6)), mat, 0, 0, 0);
-  } else if (name === 'fist') {
-    const d = segs(3);
-    addMesh(new THREE.BoxGeometry(1.4, 1.0, 1.1, d, d, d), mat, 0, 0.1, 0);
-    addMesh(new THREE.BoxGeometry(0.42, 0.7, 0.42, d, d, d), mat, 0.82, -0.1, 0.2);
-  }
+  const s = segs(32);
+  if (name === 'cube') { const d = segs(4); addMesh(new THREE.BoxGeometry(2,2,2,d,d,d), mat, 0,0,0); }
+  else if (name === 'sphere') { addMesh(new THREE.SphereGeometry(1.2, s, Math.max(4, Math.round(s*0.75))), mat, 0,0,0); }
+  else if (name === 'cylinder') { addMesh(new THREE.CylinderGeometry(0.8,0.8,2.5,s,segs(4)), mat, 0,0,0); }
+  else if (name === 'cone') { addMesh(new THREE.ConeGeometry(1,2.5,s,segs(4)), mat, 0,0,0); }
+  else if (name === 'pyramid') { addMesh(new THREE.ConeGeometry(1.2,2.4,4,segs(3)), mat, 0,0,0); }
+  else if (name === 'torus') { addMesh(new THREE.TorusGeometry(1,0.38,Math.max(4,segs(16)),s), mat, 0,0,0); }
+  else if (name === 'cyl_on_box') { const d=segs(3); addMesh(new THREE.BoxGeometry(1.8,1.2,1.8,d,d,d), mat, 0,-0.6,0); addMesh(new THREE.CylinderGeometry(0.6,0.6,1.4,s,segs(4)), mat, 0,0.9,0); }
+  else if (name === 'sphere_on_cyl') { addMesh(new THREE.CylinderGeometry(0.5,0.65,1.6,s,segs(4)), mat, 0,-0.8,0); addMesh(new THREE.SphereGeometry(0.85,s,Math.max(4,Math.round(s*0.75))), mat, 0,0.85,0); }
+  else if (name === 'cone_on_cyl') { addMesh(new THREE.CylinderGeometry(0.7,0.7,1.5,s,segs(4)), mat, 0,-0.75,0); addMesh(new THREE.ConeGeometry(0.85,1.4,s,segs(4)), mat, 0,0.95,0); }
+  else if (name === 'head') { addScaledMesh(new THREE.SphereGeometry(1,s,Math.max(4,Math.round(s*0.75))), mat, 1,1.1,0.92, 0,0.4,0); const d=segs(2); addMesh(new THREE.BoxGeometry(1.3,0.7,0.95,d,d,d), mat, 0,-0.72,0.05); }
+  else if (name === 'torso') { const d=segs(4); addMesh(new THREE.BoxGeometry(2.0,2.5,1.1,d,d,d), mat, 0,0,0); }
+  else if (name === 'arm') { addMesh(new THREE.CylinderGeometry(0.45,0.6,3.0,s,segs(6)), mat, 0,0,0); }
+  else if (name === 'fist') { const d=segs(3); addMesh(new THREE.BoxGeometry(1.4,1.0,1.1,d,d,d), mat, 0,0.1,0); addMesh(new THREE.BoxGeometry(0.42,0.7,0.42,d,d,d), mat, 0.82,-0.1,0.2); }
 }
 
 let currentShapeName = 'cube';
 
-function setShape(name) {
+function setShape(name, btn) {
   currentShapeName = name;
   document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  btn.classList.add('active');
   document.getElementById('info').textContent = shapeInfo[name] || '';
   rebuildScene();
+  if (isMobile()) closeSidebar();
 }
 
 function rebuildScene() {
@@ -295,8 +313,7 @@ function toggleLight() {
   const btn = document.getElementById('btn-light');
   btn.textContent = lightOn ? 'Light: ON' : 'Light: OFF';
   btn.classList.toggle('active', lightOn);
-  sunLight.visible = lightOn;
-  fillLight.visible = lightOn;
+  sunLight.visible = lightOn; fillLight.visible = lightOn;
   ambientLight.intensity = lightOn ? 0.25 : 1.2;
   rebuildScene();
 }
@@ -306,9 +323,7 @@ function toggleWire() {
   const btn = document.getElementById('btn-wire');
   btn.textContent = wireOn ? 'Edges: ON' : 'Edges: OFF';
   btn.classList.toggle('active', !wireOn);
-  if (currentGroup) currentGroup.children.forEach(c => {
-    if (c.userData.isWire) c.visible = wireOn && !xrayOn;
-  });
+  if (currentGroup) currentGroup.children.forEach(c => { if (c.userData.isWire) c.visible = wireOn && !xrayOn; });
 }
 
 function toggleXray() {
@@ -318,11 +333,7 @@ function toggleXray() {
   btn.classList.toggle('active', xrayOn);
   document.getElementById('xray-panel').classList.toggle('visible', xrayOn);
   if (currentGroup) currentGroup.children.forEach(c => {
-    if (c.userData.isSolid) {
-      c.material.transparent = xrayOn;
-      c.material.opacity = xrayOn ? 0.08 : 1.0;
-      c.material.depthWrite = !xrayOn;
-    }
+    if (c.userData.isSolid) { c.material.transparent = xrayOn; c.material.opacity = xrayOn ? 0.08 : 1.0; c.material.depthWrite = !xrayOn; }
     if (c.userData.isWire) c.visible = wireOn && !xrayOn;
     if (c.userData.isXray) c.visible = xrayOn;
   });
@@ -336,6 +347,9 @@ function onDensityChange(val) {
 
 function resetView() { rotX = 0.3; rotY = 0.5; zoom = 7; }
 
+// ---- Mouse controls ----
+let isDragging = false;
+let lastMouse = { x: 0, y: 0 };
 wrap.addEventListener('mousedown', e => { isDragging = true; lastMouse = { x: e.clientX, y: e.clientY }; });
 window.addEventListener('mouseup', () => isDragging = false);
 window.addEventListener('mousemove', e => {
@@ -351,17 +365,49 @@ wrap.addEventListener('wheel', e => {
   e.preventDefault();
 }, { passive: false });
 
+// ---- Touch controls — one finger rotate, two finger pinch zoom ----
 let lastTouch = null;
-wrap.addEventListener('touchstart', e => { if (e.touches.length === 1) lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY }; });
+let lastPinchDist = null;
+
+wrap.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    lastPinchDist = null;
+  } else if (e.touches.length === 2) {
+    lastTouch = null;
+    lastPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+  e.preventDefault();
+}, { passive: false });
+
 wrap.addEventListener('touchmove', e => {
   if (e.touches.length === 1 && lastTouch) {
     rotY -= (e.touches[0].clientX - lastTouch.x) * 0.01;
     rotX += (e.touches[0].clientY - lastTouch.y) * 0.01;
     rotX = Math.max(-1.4, Math.min(1.4, rotX));
     lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  } else if (e.touches.length === 2 && lastPinchDist !== null) {
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    zoom -= (dist - lastPinchDist) * 0.04;
+    zoom = Math.max(2.5, Math.min(18, zoom));
+    lastPinchDist = dist;
   }
   e.preventDefault();
 }, { passive: false });
+
+wrap.addEventListener('touchend', e => {
+  if (e.touches.length === 0) { lastTouch = null; lastPinchDist = null; }
+  else if (e.touches.length === 1) {
+    lastTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    lastPinchDist = null;
+  }
+});
 
 function resize() {
   const w = wrap.clientWidth, h = wrap.clientHeight;
